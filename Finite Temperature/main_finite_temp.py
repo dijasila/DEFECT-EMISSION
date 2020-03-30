@@ -69,8 +69,8 @@ def get_spectal_function(omegas, huang_rhys_factors, angular_frequencies_HRF):
 
 
 # Broadening parameters
-gamma = 100
-gamma2 = 100
+gamma = 120
+gamma2 = 220
 
 
 # Temperature parameter
@@ -78,8 +78,8 @@ beta = None
 
 
 # Setting up the domains
-dt = 0.0001
-N = 16
+dt = 0.00001
+N = 18
 N_max = 2**N # In principle this should be 2**N
 times = np.arange(0, N_max)*dt
 omegas = times/dt*(2*np.pi/(N_max*dt)) # Centered around zero!
@@ -103,60 +103,32 @@ dw_sajid = abs(np.diff(freqs_sajid)[0])
 
 # Getting spectral function
 spectral_function, s0 = get_spectal_function(omegas, huang_rhys_factors, frequencies)
+# Getting phonon correlation function
+times, td_spectral_function = phonon_correlation_function(omegas, spectral_function, None)
 
 
-# rfft test
-td_spectral_function = np.fft.rfft(spectral_function)
-fd_spectral_function = np.fft.irfft(td_spectral_function)
 
-print(len(spectral_function))
-print(len(fd_spectral_function))
-
-
-fig = plt.figure(figsize=(12, 6))
-plt.plot(omegas, spectral_function)
-plt.plot(omegas, fd_spectral_function, linestyle = "--")
-plt.xlim([0, 30000])
-fig.savefig("rfft_sandbox.png")
-
-times = np.fft.rfftfreq(omegas.size, d = dw)*2*np.pi
 fig = plt.figure(figsize=(12, 6))
 plt.plot(times, td_spectral_function)
 fig.savefig("St_test.png")
 
+
 G = np.exp(td_spectral_function - s0)*np.exp(-gamma2*times)
 A = fftshift(np.fft.irfft(G))
 
-
-
-print(len(A))
-print(len(omegas))
+print(gamma)
+print(gamma2)
 fig = plt.figure(figsize=(12, 6))
 plt.plot(omegas - np.max(omegas)/2, A)
 # plt.xlim([-3000, 10000])
 fig.savefig("test_A.png")
 
-
-
-"""
-# Getting G and the spectral function A
-G = np.exp(St - s0)*np.exp(-gamma2*times)
-A = fftshift(fft(G))
-
-
-# Normalization steps
 A = A/(np.trapz(A, dx = dw))
 emissions_sajid = emissions_sajid/np.trapz(emissions_sajid, dx = 2*np.pi*dw_sajid)
 
-
-# Plotting 
-shifted_omegas = omegas - omegas[int(len(omegas)/2)]
-
-# Figure 
 fig = plt.figure(figsize=(12, 6))
-
-plt.title("Comparing Alkauskas and Duschinsky")
-plt.plot(shifted_omegas/(2*np.pi), 2*A, label = "Numpy FFT based Alkauskas method")
+plt.title("Checking rFFT method")
+plt.plot((omegas - np.max(omegas)/2)/(2*np.pi), A, label = "Numpy rFFT method")
 plt.plot(freqs_sajid, emissions_sajid, label = "Sajid", linestyle = "--")
 plt.xlim([-3000, np.max(freqs_sajid)])
 plt.xlabel(r"$\nu$ $[\mathrm{cm}^{-1}]$")
@@ -164,5 +136,6 @@ plt.ylabel("$A(\hbar \omega)$ [A.U.]")
 plt.grid()
 plt.legend()
 plt.tight_layout()
-fig.savefig("Sideband_spectrum_comparison.png")
-"""
+fig.savefig("Sideband_spectrum_comparison2.png")
+
+
