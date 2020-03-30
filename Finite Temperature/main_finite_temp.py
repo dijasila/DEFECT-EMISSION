@@ -9,7 +9,6 @@ matplotlib.rcParams["font.size"] = 20
 matplotlib.use('Agg')
 
 
-
 # Replacement for the dirac delta functions
 def broadening(w, w0, sigma):
     return 1/(sigma*np.sqrt(2*np.pi))*np.exp(-1/2*((w-w0)/sigma)**2)
@@ -28,6 +27,7 @@ def phonon_correlation_function(omegas, spectral_data, beta):
 
         boo_array= omegas > 0 
         spectral_density[boo_array] = spectral_data[boo_array]
+        # Go to the time domain
         corr_func = np.fft.rfft(spectral_density.real)
         
        
@@ -54,7 +54,7 @@ def phonon_correlation_function(omegas, spectral_data, beta):
 
 def get_spectal_function(omegas, huang_rhys_factors, angular_frequencies_HRF):
     # Getting S(omega)
-    spectral_function = np.zeros_like(omegas, dtype = "complex128")
+    spectral_function = np.zeros_like(omegas)
     for index in range(len(huang_rhys_factors)):
         sk = huang_rhys_factors[index]*broadening(omegas, frequencies[index] ,gamma)
         spectral_function += sk
@@ -70,7 +70,7 @@ def get_spectal_function(omegas, huang_rhys_factors, angular_frequencies_HRF):
 
 # Broadening parameters
 gamma = 100
-gamma2 = 250
+gamma2 = 100
 
 
 # Temperature parameter
@@ -78,11 +78,14 @@ beta = None
 
 
 # Setting up the domains
-dt = 0.00001
-N_max = 6000 # In principle this should be 2**N
-times = np.arange(0, N_max, dtype = "complex128")*dt
+dt = 0.0001
+N = 15
+N_max = 2**N # In principle this should be 2**N
+times = np.arange(0, N_max)*dt
 omegas = times/dt*(2*np.pi/(N_max*dt)) # Centered around zero!
 dw = abs(omegas[1] - omegas[0])
+
+# megas = np.fft.rfftfreq(N_max, d = dw)
 
 
 # First we need to load in the relevant data
@@ -102,12 +105,37 @@ dw_sajid = abs(np.diff(freqs_sajid)[0])
 spectral_function, s0 = get_spectal_function(omegas, huang_rhys_factors, frequencies)
 
 
+# rfft test
+td_spectral_function = np.fft.rfft(spectral_function)
+fd_spectral_function = np.fft.irfft(td_spectral_function)
 
-# Time domain S(t)
-St = ifft(spectral_function)*6E5 # Multiplicative factor for numerical stability
-# times, St = phonon_correlation_function(omegas, spectral_function, beta)
+print(len(spectral_function))
+print(len(fd_spectral_function))
 
 
+fig = plt.figure(figsize=(12, 6))
+plt.plot(omegas, spectral_function)
+plt.plot(omegas, fd_spectral_function, linestyle = "--")
+plt.xlim([0, 30000])
+fig.savefig("rfft_sandbox.png")
+
+times = np.fft.rfftfreq(omegas.size, d = dw)*2*np.pi
+fig = plt.figure(figsize=(12, 6))
+plt.plot(times, td_spectral_function)
+fig.savefig("St_test.png")
+
+G = np.exp(td_spectral_function - s0)*np.exp(-gamma2*times)
+A = fftshift(np.fft.irfft(G))
+
+
+fig = plt.figure(figsize=(12, 6))
+plt.plot(A)
+# plt.yscale("log")
+fig.savefig("test_A.png")
+
+
+
+"""
 # Getting G and the spectral function A
 G = np.exp(St - s0)*np.exp(-gamma2*times)
 A = fftshift(fft(G))
@@ -134,3 +162,4 @@ plt.grid()
 plt.legend()
 plt.tight_layout()
 fig.savefig("Sideband_spectrum_comparison.png")
+"""

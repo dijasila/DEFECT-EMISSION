@@ -60,6 +60,11 @@ s0  = np.sum(huang_rhys_factors)
 # Time domain S(t)
 St = ifft(spectral_function)*6E5 # Multiplicative factor for numerical stability
 
+
+fig = plt.figure(figsize=(12, 6))
+plt.plot(times, St)
+fig.savefig("St_test.png")
+
 # Getting G and the spectral function A
 G = np.exp(St - s0)*np.exp(-gamma2*times)
 A = fftshift(fft(G))
