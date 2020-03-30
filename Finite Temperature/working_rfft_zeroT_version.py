@@ -52,6 +52,7 @@ def phonon_correlation_function(omegas, spectral_data, beta):
     return trange, corr_func * dw
 
 
+# Wrapper to calculate spectrum (OBS only beta = None works for now!)
 def get_spectal_function(omegas, huang_rhys_factors, angular_frequencies_HRF):
     # Getting S(omega)
     spectral_function = np.zeros_like(omegas)
@@ -68,6 +69,20 @@ def get_spectal_function(omegas, huang_rhys_factors, angular_frequencies_HRF):
 
 
 
+def get_sideband_spectrum(omegas, huang_rhys_factors, frequencies, gamma, gamma2, beta):
+    # Getting spectral function
+    spectral_function, s0 = get_spectal_function(omegas, huang_rhys_factors, frequencies)
+    times, td_spectral_function = phonon_correlation_function(omegas, spectral_function, beta)
+    
+
+    # Generating spectrum
+    G = np.exp(td_spectral_function - s0)*np.exp(-gamma2*times)
+    A = fftshift(np.fft.irfft(G))
+    
+
+    return A
+
+
 # Broadening parameters
 gamma = 120
 gamma2 = 220
@@ -76,16 +91,13 @@ gamma2 = 220
 # Temperature parameter
 beta = None
 
-
 # Setting up the domains
 dt = 0.00001
 N = 18
 N_max = 2**N # In principle this should be 2**N
-times = np.arange(0, N_max)*dt
-omegas = times/dt*(2*np.pi/(N_max*dt)) # Centered around zero!
+# times = np.arange(0, N_max)*dt
+omegas = np.arange(0, N_max)*(2*np.pi/(N_max*dt)) # Centered around zero!
 dw = abs(omegas[1] - omegas[0])
-
-# megas = np.fft.rfftfreq(N_max, d = dw)
 
 
 # First we need to load in the relevant data
@@ -100,34 +112,18 @@ freqs_sajid = df_Sajid_spectrum["Freq.(1000 cm^-1)"]*1000
 emissions_sajid = df_Sajid_spectrum["Emissin.(band strenght)"]
 dw_sajid = abs(np.diff(freqs_sajid)[0])
 
-
-# Getting spectral function
-spectral_function, s0 = get_spectal_function(omegas, huang_rhys_factors, frequencies)
-# Getting phonon correlation function
-times, td_spectral_function = phonon_correlation_function(omegas, spectral_function, None)
+# Getting the spectrum
+A = get_sideband_spectrum(omegas, huang_rhys_factors, frequencies, gamma, gamma2, beta)
 
 
-
-fig = plt.figure(figsize=(12, 6))
-plt.plot(times, td_spectral_function)
-fig.savefig("St_test.png")
-
-
-G = np.exp(td_spectral_function - s0)*np.exp(-gamma2*times)
-A = fftshift(np.fft.irfft(G))
-
-print(gamma)
-print(gamma2)
-fig = plt.figure(figsize=(12, 6))
-plt.plot(omegas - np.max(omegas)/2, A)
-# plt.xlim([-3000, 10000])
-fig.savefig("test_A.png")
-
+# Normalization
 A = A/(np.trapz(A, dx = dw))
 emissions_sajid = emissions_sajid/np.trapz(emissions_sajid, dx = 2*np.pi*dw_sajid)
 
+
+# Visualization
 fig = plt.figure(figsize=(12, 6))
-plt.title("Checking rFFT method")
+plt.title("rFFT method")
 plt.plot((omegas - np.max(omegas)/2)/(2*np.pi), A, label = "Numpy rFFT method")
 plt.plot(freqs_sajid, emissions_sajid, label = "Sajid", linestyle = "--")
 plt.xlim([-3000, np.max(freqs_sajid)])
