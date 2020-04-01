@@ -159,7 +159,7 @@ def phonon_sideband_spectrum(omegas, spectral_data, beta, Gamma_opt, Gamma_deph)
 
 
 
-def brute_phonon_sideband_spectrum(detunings,omegas, spectral_data, beta, Gamma_opt, Gamma_deph):
+def brute_phonon_sideband_spectrum(detunings, omegas, spectral_data, beta, Gamma_opt, Gamma_deph):
 
     #find the phonon correlation function:
     tcorr, phon_corr = phonon_correlation_function(omegas, spectral_data, beta)
@@ -195,6 +195,35 @@ def brute_phonon_sideband_spectrum(detunings,omegas, spectral_data, beta, Gamma_
 
 
 
+def phonon_sideband_spectrum(detunings,omegas, spectral_data, beta, Gamma_opt, Gamma_deph):
+       #find the phonon correlation function:
+    tcorr, phon_corr = phonon_correlation_function(omegas, spectral_data, beta)
+
+    #tfull = np.append(np.delete(np.flip(tcorr),-1),tcorr)
+    #exponentiate into polaron form:
+    Gt = np.exp(phon_corr)
+   
+    #The Frank-Condon factor is simply the correlation function evaluated at t=0:
+    FC = 1/Gt[0]
+    
+    # we also want the steady state of this function
+    phon_steady = Gt[-1]
+
+    # find the relevant optical contribution: 
+    g1bin = np.exp(-0.5 *( Gamma_opt + Gamma_deph) * tcorr)
+    g1bin /= Gamma_opt
+    
+
+    # the signal that will be Fourier transformed is then:
+    signal = Gt * FC * g1bin
+
+    dt = np.abs(tcorr[0]-tcorr[1])
+ 
+    spec_list = np.array([]) 
+
+    sideband_spectrum = ifftshift(np.fft.irfft(signal))
+    return sideband_spectrum
+
 
 
 
@@ -203,15 +232,21 @@ if __name__=='__main__':
 
     file = "../data.xlsx"
 
-    dt = 0.0001#2 * np.pi / w_max# extract the interval required to hit the max frequency.
+    dt = 0.00001#2 * np.pi / w_max# extract the interval required to hit the max frequency.
 
-    omegas, spectral_data = gen_spectral_dens(file, 200, 12000, 2* np.pi/dt)
+    omegas, spectral_data = gen_spectral_dens(file, 200, 120000, 2* np.pi/dt)
     
     
     Gamma_opt = 250
     Gamma_deph = 0
-    detunings = np.linspace(-6000,2000,800)*(2 * np.pi)
-    spec_list = brute_phonon_sideband_spectrum(detunings, omegas, spectral_data, None,2 *  Gamma_opt, Gamma_deph)
+    # detunings = np.linspace(-6000,2000,800)*(2 * np.pi)
+    detunings = -(omegas - np.max(omegas)/2)
+    # detunings = np.linspace(-np.max(omegas)/2, np.max(omegas)/2, len(omegas)/4 + 1)
+    # spec_list = brute_phonon_sideband_spectrum(detunings, omegas, spectral_data, None,2 *  Gamma_opt, Gamma_deph)
+    spec_list = phonon_sideband_spectrum(detunings, omegas, spectral_data, None,2 *  Gamma_opt, Gamma_deph)
+    
+    
+    
     spec_norm = spec_list/np.max(spec_list*np.abs(detunings[0]-detunings[1]))
     
     
@@ -219,26 +254,37 @@ if __name__=='__main__':
     Temp_range = np.array([4, 25,50,75,100])
     beta_range = 1/(kb * Temp_range)
 
+    plt.rcParams.update({'font.size':20,
+                         'lines.linewidth':2})
 
-    fig, ax = plt.subplots(2,2, figsize=(18,8),sharey=False)
-    
+
+    fig, ax = plt.subplots(2,2, figsize=(20,10),sharey=False)
     zero_temp = phonon_correlation_function(omegas, spectral_data,None )
     ax[0][0].plot(omegas, spectral_data)
     ax[0][0].set_xlim(0,12000)
     ax[0][1].plot( detunings/(2 * np.pi), spec_norm.real, 'r-')
+    ax[0][1].set_xlim([-6000, 2000])
   
     for beta in beta_range:
         print("Calculating for beta = {}".format(beta))
         temp = phonon_correlation_function(omegas, spectral_data, beta)
 
         ax[1][0].plot(temp[0], temp[1].real,'--')
-        detunings_HT = np.linspace(-6000,4000,1000)*(2 * np.pi)
+        # detunings_HT = np.linspace(-6000,4000,1000)*(2 * np.pi)
 
-        spectrum_HT = brute_phonon_sideband_spectrum(detunings_HT, omegas, spectral_data, beta,2 *  Gamma_opt, Gamma_deph)
+        detunings_HT = detunings.copy()
+
+
+        spectrum_HT = phonon_sideband_spectrum(detunings_HT, omegas, spectral_data, beta,2 *  Gamma_opt, Gamma_deph)
         df = np.abs(detunings_HT[0]-detunings_HT[1]) 
         # print(spectrum_HT)   
         norm_spec = spectrum_HT/np.max(spectrum_HT * df)
-        ax[1][1].plot(detunings_HT/(2 * np.pi), norm_spec)
+        ax[1][1].plot(detunings_HT/(2 * np.pi), norm_spec, label = r"$\beta = {b:0.1e}$".format(b = beta))
+
+
+    ax[1][1].set_xlim([-12000, 8000])
+    ax[1][1].legend(fontsize = 14)
+
 
     ax[1][0].set_xlim(0,0.025)
     # for beta in beta_range:
@@ -255,8 +301,11 @@ if __name__=='__main__':
    
 
     ax[0][1].set_xlabel('Time (inv. wavenumbers)')
-    ax[0][1].set_ylabel('Phonon Correlation function')
+    ax[1][0].set_ylabel('Phonon Correlation function')
   #ax[0].set_yscale('log')
+    fig.suptitle("Results from 1st FFT based finite temperature version", y = 1.0)
+
+
     plt.tight_layout()
     plt.show()
     fig.savefig('Temperature_dependent_spectra.png')
