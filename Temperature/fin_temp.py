@@ -218,6 +218,7 @@ if __name__=='__main__':
     beta_range = 1/(kb * Temp_range)
 
 
+    plt.rcParams.update({"font.size":20})
     fig, ax = plt.subplots(2,2, figsize=(18,8),sharey=False)
     
     zero_temp = phonon_correlation_function(omegas, spectral_data,None )
