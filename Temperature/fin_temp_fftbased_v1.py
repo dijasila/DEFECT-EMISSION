@@ -303,9 +303,7 @@ if __name__=='__main__':
     ax[0][1].set_xlabel('Time (inv. wavenumbers)')
     ax[1][0].set_ylabel('Phonon Correlation function')
   #ax[0].set_yscale('log')
-    fig.suptitle("Results from 1st FFT based finite temperature version", y = 1.0)
 
 
     plt.tight_layout()
-    plt.show()
     fig.savefig('Temperature_dependent_spectra.png')
