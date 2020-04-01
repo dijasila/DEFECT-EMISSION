@@ -154,8 +154,6 @@ def phonon_sideband_spectrum(omegas, spectral_data, beta, Gamma_opt, Gamma_deph)
 
     # Fourier transform this to find the sidband contribution to the spectra:
     sideband_spec = np.fft.fftshift(np.fft.fft(signal))
-    plt.plot(sideband_spec.real)
-    plt.show()
 
 
 
