@@ -219,9 +219,8 @@ def phonon_sideband_spectrum(detunings,omegas, spectral_data, beta, Gamma_opt, G
 
     dt = np.abs(tcorr[0]-tcorr[1])
  
-    spec_list = np.array([]) 
-
-    sideband_spectrum = ifftshift(np.fft.irfft(signal))
+    print("Run fast and real")
+    sideband_spectrum = ifftshift(np.abs(detunings)**3*np.fft.irfft(signal))
     return sideband_spectrum
 
 
