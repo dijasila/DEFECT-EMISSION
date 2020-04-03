@@ -48,7 +48,7 @@ spectrum_normalized = spectrum_normalized*detunings**3
 spectrum_normalized /= np.max(spectrum_normalized*np.abs(detunings[0] - detunings[1]))
 
 
-
+ # To eV
 
 
 final_data_frame = pd.DataFrame()
@@ -58,8 +58,10 @@ final_data_frame["Zero temperature spectrum"] = (spectrum_normalized/np.max(spec
 
 # Setting up temperature range
 kb =69.36#(cm^-1 K^-1)
-# Temp_range = np.array([4, 25,50,75,100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800])
-Temp_range = np.array([4, 25, 50, 75, 100, 125, 200, 250, 300, 350])
+kb = 0.7280
+
+Temp_range = np.array([4, 25,50,75,100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 900, 1000, 1200, 1300])
+# Temp_range = np.array([4, 25, 50, 75, 100, 125, 200, 250, 300, 350])
 beta_range = 1/(kb * Temp_range)
 
 for beta in beta_range:
@@ -67,7 +69,7 @@ for beta in beta_range:
     sideband_spectrum = phonon_sideband_spectrum(detunings, omegas, spectral_data, beta, 2 *  gamma_opt, gamma_deph)
     spectrum_normalized = sideband_spectrum/np.max(sideband_spectrum*np.abs(detunings[0]-detunings[1]))
 
-
+    
     # More trickery
     boo_array = (detunings > -omega_ZPL)&(detunings < omega_ZPL)
     spectrum_normalized = sideband_spectrum[boo_array]
@@ -83,22 +85,23 @@ for beta in beta_range:
 
 fig = plt.figure(figsize = (12, 6))
 for beta in beta_range:
-    plt.plot(detunings/(2*np.pi), final_data_frame["T = {b:0.0f} K".format(b = 1/(kb*beta))], label = "{b:0.0f} K".format(b = 1/(kb*beta)))
+    plt.plot(detunings/(2*np.pi)*0.00012, final_data_frame["T = {b:0.0f} K".format(b = 1/(kb*beta))], label = "{b:0.0f} K".format(b = 1/(kb*beta)))
 
 
-plt.plot(detunings/(2*np.pi), final_data_frame["Zero temperature spectrum"], label = "0 K", linestyle = "--")
+plt.plot(detunings/(2*np.pi)*0.00012, final_data_frame["Zero temperature spectrum"], label = "0 K", linestyle = "--")
 
 
 plt.title("Temperature dependent PL spectrum from the CbVn defect in hBN")
-plt.xlabel("Frequency $[\mathrm{cm}^{-1}]$")
+plt.xlabel("Frequency $[eV]$")
 plt.ylabel("Normalized luminesence function")
 
 plt.grid()
-plt.legend(fontsize = 14)
-plt.xlim([0, omega_ZPL/(2*np.pi) + 17000])
+plt.legend(fontsize = 14, ncol = 2)
+plt.xlim([0, (omega_ZPL/(2*np.pi) + 17000)*0.00012])
 
 plt.tight_layout()
 fig.savefig("Temperature_specs.png")
 
 
 final_data_frame.to_csv("Temperature_PL_data.csv", index = False)
+# final_data_frame.to_excel("Temperature_PL_data.xlsx")
