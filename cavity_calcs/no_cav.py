@@ -267,13 +267,13 @@ if __name__=='__main__':
     #full sideband and zpl contributions
     sideband_spectrum = ifftshift(np.fft.irfft(signal))
     
-    
+    hbarc_cmtoev = 1.9746e-05
     sideband_cont = ifftshift(np.fft.irfft(Gt))
     zpl_cont = ifftshift(np.fft.irfft(g1bin))
     con = sc.signal.fftconvolve(
         sideband_cont.real, zpl_cont, mode='same')
-    plt.plot(omegas - np.max(omegas)/2,con * FC)
-    plt.plot(omegas - np.max(omegas)/2,sideband_spectrum, '--')
+    plt.plot(2.1-hbarc_cmtoev*(omegas - np.max(omegas)/2), con * FC)
+    plt.plot(2.1-hbarc_cmtoev*(omegas - np.max(omegas)/2),sideband_spectrum, '--')
     
 
     plt.show()

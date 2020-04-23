@@ -50,7 +50,7 @@ def one_colour(w, vals, rhs):
 
 def cavity_filter(w, center, width):
     h = (0.5 * width)
-    h /= 1j*(w-width) + 0.5 * kappa
+    h /= 1j*(w-center) + 0.5 * width
     return h
 
 
@@ -179,8 +179,8 @@ if __name__=='__main__':
     hbarc_cmtoev = 1.9746e-05  # eVcm
     sd_file = '../data.xlsx'
     phon_width = 200 * hbarc_cmtoev
-    SD_sampling = 240000
-    dt = 0.000001
+    SD_sampling = 120000
+    dt = 0.00001
     w_max = (2 * np.pi/dt)*hbarc_cmtoev
 
     kb = 8.617E-5  # eV K^-1
@@ -191,39 +191,60 @@ if __name__=='__main__':
     #units are in eV
     dim = 2
     eps = 0
-    g = 0.1
+    g = 0.01
     omega_c = 0
     kappa = 0.1
     Gam_opt = 0.001
     driving = 0
+    fig, ax = plt.subplots(2, 2, figsize=(15, 8), sharey=False)
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    kappa_range = 0.1 * np.array([1E-2, 1E-1, 0.25,1])
+    for nn, kappa in enumerate(kappa_range):
+        out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
 
-    out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
-    
-    
-    
-    # detuning = np.linspace(-1,1, 400)
-    # out_brute = emission_spectrum(dim, eps, g, omega_c, driving,
-    #                               kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max, method='brute', wrange=detuning)
-    # pickle.dump(out_brute, open('brute_comparison.p', 'wb'))
-    
-    #out_brute = pickle.load(open('brute_comparison.p', 'rb'))
+        norm = np.max(out['markov']['cavity'])
+        ax[0][0].plot(2.1-out['markov']['wrange'],
+                      out['markov']['cavity']/norm)
+        
+        norm = np.max(out['non_markov']['cavity'])
+        ax[0][1].plot(2.1-out['non_markov']['wrange'],
+                      out['non_markov']['cavity']/norm, color=colors[nn])
 
+        cav_fil = np.abs(cavity_filter(out['markov']['wrange'], 2.1, kappa))**2/np.abs(
+            cavity_filter(2.1, 2.1, kappa))**2
+        ax[0][1].plot(out['markov']['wrange'],cav_fil,'--',color = colors[nn])
+    ax[0][0].legend(kappa_range, title=r'$\kappa$ (eV)')
 
-    fig, ax = plt.subplots(1,2)
+    kappa = 0.01
+    grange = [1E-3, 1E-2, 1E-1]
+    for g in grange:
+        out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
+        
+        norm = np.max(out['markov']['cavity'])
+        ax[1][0].plot(2.1-out['markov']['wrange'], out['markov']['cavity']/norm)
 
-    ax[0].plot(out['markov']['wrange'], out['markov']
-               ['cavity'])# / np.max(out['markov']['cavity']))
+        norm = np.max(out['non_markov']['cavity'])
+        ax[1][1].plot(2.1-out['non_markov']['wrange'],
+                      out['non_markov']['cavity']/norm)
+    cav_fil = np.abs(cavity_filter(out['non_markov']['cavity'],2.1, kappa))**2
+    ax[1][1].plot(out['non_markov']['cavity'],cav_fil/np.max(cav_fil),'--')
+    ax[1][0].legend(grange, title = 'g (eV)')
+    titles = ['(a) Markovian', '(b) Non-Markovian', '(c) Markovian', '(d) Non-Markovian']
+    for index, a in enumerate(ax.flat):
+        a.set_xlim(1.5,2.15)
+        a.set_ylim(-0.1,1.1)
+        a.set_xlabel(r'Energy, $\hbar\omega$ (eV)')
+        a.set_title(titles[index])
 
-    ax[0].plot(out_brute['markov']['wrange'], out_brute['markov']['cavity'] -
-               out_brute['markov']['cavity'][-1])  # /np.max(out_brute['markov']['cavity']))
+    ax[0][0].set_xlim(2.085,2.115)
+    ax[1][0].set_xlim(1.9, 2.2)
 
-    ax[1].plot(out['non_markov']['wrange'], out['non_markov']
-             ['cavity'] )
-    ax[1].plot(out_brute['non_markov']['wrange'], out_brute['non_markov']
-               ['cavity']-out_brute['non_markov']
-               ['cavity'][0])
-
-    for a in ax:
-        a.set_xlim(-1,1)
-    plt.show()
+    ax[0][0].set_yscale('linear')
+    ax[0][1].set_yscale('log')
+    ax[1][1].set_yscale('log')
+    ax[0][1].set_ylim(1E-5,1.5)
+    ax[1][1].set_ylim(1E-5,1.5)
+    plt.tight_layout()
+    plt.savefig('cavity_emission_small_kappa.pdf')
   

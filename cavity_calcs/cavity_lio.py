@@ -43,8 +43,8 @@ def rate_functions(sd_file, phon_width, SD_sampling, w_max, beta):
 
     #build the correlation functions for iterating over:
     freqs = np.fft.fftshift(np.fft.fftfreq(Lxx.shape[0], dt))
-    four_xx = np.fft.fftshift(np.fft.fft(Lxx))
-    four_yy = np.fft.fftshift(np.fft.fft(Lyy))
+    four_xx = np.fft.fftshift(np.fft.fft(Lxx)) * (trange[1]-trange[0])
+    four_yy = np.fft.fftshift(np.fft.fft(Lyy)) * (trange[1]-trange[0])
 
     f_xx = sc.interpolate.interp1d(freqs, four_xx, kind='nearest')
     f_yy = sc.interpolate.interp1d(freqs, four_yy, kind='nearest')
@@ -176,77 +176,89 @@ if __name__ =='__main__':
     omegas, spectral_data = phonon.gen_spectral_dens(sd_file, phon_width, SD_sampling, w_max)
    
     trange, phi, Lxx, Lyy = phonon.polaron_correlation_functions(omegas, spectral_data, beta)
-    sideband_contribution = np.exp(phi)#Lxx + Lyy
+    Bren, f_xx, f_yy = rate_functions(
+        sd_file, phon_width, SD_sampling, w_max, beta)
+    lamb_range = np.linspace(-1,1,10)
+    for ll in lamb_range:
+        exp_factor = np.exp(1j * ll * trange)
+        tot = np.sum(Lxx * exp_factor) * (trange[1]-trange[0])
+        print(tot, f_xx(ll) * (trange[1]-trange[0]))
 
-    sideband_spectrum = np.fft.fftshift(np.fft.irfft(sideband_contribution))
-    d_omega = np.abs(omegas[0]-omegas[1]) 
-    # plt.plot(omegas - np.max(omegas)/2, sideband_spectrum)
-    # plt.show()
 
-    #units are in eV
-    dim=2
-    eps=0
-    g=0.1
-    omega_c=0
-    kappa=0.1
-    Gam_opt = 0.001 
-    driving = 0
-
-    lio  = build_meq(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max, beta)
-    nplio = lio.full()
-
-    vals, vecs = np.linalg.eig(nplio)
-    rho0np, op, proj, fullproj = initial_operators(dim)
-
-    Amats = [ind.a_mat_build(vals, vecs, rho0np, op[nn],proj[nn])
-    for nn in range(len(op))]
-    # a_list = [np.sum(np.nan_to_num(A/vals), axis=1) for A in a_mats]
-
-    wrange_zpl = np.arange(-5, 5, d_omega)
    
 
-    # calculate the ZPL contributions
-    val_vec = np.nan_to_num(1/vals)
-    rhs = [A.T @ val_vec for A in Amats]
+
+    # sideband_contribution = np.exp(phi)#Lxx + Lyy
+
+    # sideband_spectrum = np.fft.fftshift(np.fft.irfft(sideband_contribution))
+    # d_omega = np.abs(omegas[0]-omegas[1]) 
+    # # plt.plot(omegas - np.max(omegas)/2, sideband_spectrum)
+    # # plt.show()
+
+    # #units are in eV
+    # dim=2
+    # eps=0
+    # g=0.1
+    # omega_c=0
+    # kappa=0.1
+    # Gam_opt = 0.001 
+    # driving = 0
+
+#     lio  = build_meq(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max, beta)
+#     nplio = lio.full()
+
+#     vals, vecs = np.linalg.eig(nplio)
+#     rho0np, op, proj, fullproj = initial_operators(dim)
+
+#     Amats = [ind.a_mat_build(vals, vecs, rho0np, op[nn],proj[nn])
+#     for nn in range(len(op))]
+#     # a_list = [np.sum(np.nan_to_num(A/vals), axis=1) for A in a_mats]
+
+#     wrange_zpl = np.arange(-5, 5, d_omega)
+   
+
+# #     # calculate the ZPL contributions
+#     val_vec = np.nan_to_num(1/vals)
+#     rhs = [A.T @ val_vec for A in Amats]
     
-    spec_dat_em = np.array([one_colour(w, vals, rhs[0])
-                            for w in omegas-np.max(omegas)/2]).real
-    spec_dat_cav = np.array([one_colour(w, vals, rhs[1]) for w in wrange_zpl])
+#     spec_dat_em = np.array([one_colour(w, vals, rhs[0])
+#                             for w in omegas-np.max(omegas)/2]).real
+#     spec_dat_cav = np.array([one_colour(w, vals, rhs[1]) for w in wrange_zpl])
 
 
-    #calculate the spectra brute force to compare.
-    g1 = brute_force_corr(trange, vals, Amats[0])
-    g1_full = sideband_contribution * g1
-    # s_arr = np.array([])
-    # for w in wrange_zpl:
-    #     expfactor = np.exp(1j * w * trange)
-    #     sdat = -np.sum(g1_full * expfactor)*(trange[1]-trange[0])
-    #     s_arr = np.append(s_arr, sdat)
+#     #calculate the spectra brute force to compare.
+#     g1 = brute_force_corr(trange, vals, Amats[0])
+#     g1_full = sideband_contribution * g1
+#     s_arr = np.array([])
+#     for w in wrange_zpl:
+#         expfactor = np.exp(1j * w * trange)
+#         sdat = -np.sum(g1_full * expfactor)*(trange[1]-trange[0])
+#         s_arr = np.append(s_arr, sdat)
 
-   # pickle.dump(s_arr, open('brute_spec.p','wb') )
+#    # pickle.dump(s_arr, open('brute_spec.p','wb') )
 
-    s_arr = pickle.load(open('brute_spec.p','rb'))
-    fig, ax = plt.subplots(1,2)
+#     s_arr = pickle.load(open('brute_spec.p','rb'))
+#     fig, ax = plt.subplots(1,2)
 
-    ax[1].plot(trange,np.abs(g1_full).real,'.')
-    ax[1].set_xscale('log')
-    ax[0].plot(np.arange(-5, 5, d_omega), s_arr.real/np.max(s_arr.real))
-    #plt.plot(omegas-np.max(omegas)/2, spec_dat_em.real, '--')
-    #plt.plot((omegas-np.max(omegas)/2), sideband_spectrum/np.max(sideband_spectrum))
-    ax[0].set_xlim(-5,5)
-#    plt.plot(wrange_zpl, spec_dat_cav.real/np.max(spec_dat_cav.real))
-    #plt.plot(wrange_zpl, spec_dat_em.real/np.max(spec_dat_em.real),'.')
-    #plt.show()
-    list_conv = sc.signal.fftconvolve(
-        sideband_spectrum, np.flip(spec_dat_em,axis=0), mode='same') 
-    #sc.ndimage.convolve1d(sideband_spectrum.real,spec_dat_em, mode='nearest')
-    # print(list_conv)omegas - np.max(omegas)/2,
-    ax[0].plot(omegas-np.max(omegas)/2, list_conv.real/np.max(list_conv.real), '-.')
- # plt.plot(-omegas+np.max(omegas)/2, sideband_spectrum.real/0.007 , '.')
-    #plt.ylim(0,1)
-    plt.show()
+#     ax[1].plot(trange,np.abs(g1_full).real,'.')
+#     ax[1].set_xscale('log')
+#     ax[0].plot(np.arange(-5, 5, d_omega), s_arr.real/np.max(s_arr.real))
+#     #plt.plot(omegas-np.max(omegas)/2, spec_dat_em.real, '--')
+#     #plt.plot((omegas-np.max(omegas)/2), sideband_spectrum/np.max(sideband_spectrum))
+#     ax[0].set_xlim(-5,5)
+# #    plt.plot(wrange_zpl, spec_dat_cav.real/np.max(spec_dat_cav.real))
+#     #plt.plot(wrange_zpl, spec_dat_em.real/np.max(spec_dat_em.real),'.')
+#     #plt.show()
+#     list_conv = sc.signal.fftconvolve(
+#         sideband_spectrum, np.flip(spec_dat_em,axis=0), mode='same') 
+#     #sc.ndimage.convolve1d(sideband_spectrum.real,spec_dat_em, mode='nearest')
+#     # print(list_conv)omegas - np.max(omegas)/2,
+#     ax[0].plot(omegas-np.max(omegas)/2, list_conv.real/np.max(list_conv.real), '-.')
+#  # plt.plot(-omegas+np.max(omegas)/2, sideband_spectrum.real/0.007 , '.')
+#     #plt.ylim(0,1)
+#     plt.show()
 
-    # plt.plot(wrange_zpl, spec_dat_em)
-    # plt.plot(omegas- np.max(omegas)/2, sideband_spectrum)
+#     # plt.plot(wrange_zpl, spec_dat_em)
+#     # plt.plot(omegas- np.max(omegas)/2, sideband_spectrum)
     # plt.show()
 
