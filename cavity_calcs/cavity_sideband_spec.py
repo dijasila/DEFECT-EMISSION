@@ -8,6 +8,7 @@ import ind_tools as ind
 import pandas as pd
 import pickle
 import cavity_lio as lio
+import time
 
 
 def initial_operators(dim):
@@ -177,74 +178,115 @@ def emission_spectrum(dim, eps, g, wcav, driving, kappa, Gam_opt, sd_file, phon_
 if __name__=='__main__':
 
     hbarc_cmtoev = 1.9746e-05  # eVcm
+    hbar_meVps = 6.582E-7
+
     sd_file = '../data.xlsx'
     phon_width = 200 * hbarc_cmtoev
     SD_sampling = 120000
     dt = 0.00001
     w_max = (2 * np.pi/dt)*hbarc_cmtoev
-
     kb = 8.617E-5  # eV K^-1
     Temp_range = np.array([4, 25, 50, 75, 100])
     beta_range = 1/(kb * Temp_range)
     beta = beta_range[0]
 
-    #units are in eV
-    dim = 2
-    eps = 0
-    g = 0.01
-    omega_c = 0
-    kappa = 0.1
-    Gam_opt = 0.001
-    driving = 0
-    fig, ax = plt.subplots(2, 2, figsize=(15, 8), sharey=False)
-    prop_cycle = plt.rcParams['axes.prop_cycle']
-    colors = prop_cycle.by_key()['color']
-    kappa_range = 0.1 * np.array([1E-2, 1E-1, 0.25,1])
-    for nn, kappa in enumerate(kappa_range):
-        out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
+    #find the spectral density from the data.
+    omegas, spectral_data = phonon.gen_spectral_dens(sd_file, phon_width, SD_sampling, w_max)
 
-        norm = np.max(out['markov']['cavity'])
-        ax[0][0].plot(2.1-out['markov']['wrange'],
-                      out['markov']['cavity']/norm)
+    #caclulate the phonon correlation functions
+    trange, phi, Lxx, Lyy = phonon.polaron_correlation_functions(omegas, spectral_data, beta)
+    fig, ax = plt.subplots(1, 2, figsize=(15, 6), sharey=False)
+
+    ax[0].plot(trange * hbar_meVps * 1E3, np.abs(Lxx))
+    ax[1].plot(trange * hbar_meVps * 1E3, np.abs(Lyy))
+    for a in ax:
+        a.set_xlim(0,0.0014 * 1000)
+        a.set_xlabel('Time (fs)')
+    ax[0].set_ylabel(r'$\vert\Lambda_{xx}(t)\vert$')
+    ax[1].set_ylabel(r'$\vert\Lambda_{yy}(t)\vert$')
+    plt.savefig('Correlation_funcs.pdf')
+   #plt.show()
+    plt.close()
+    print(0.0014/hbar_meVps)
+  
+
+    # #units are in eV
+    # dim = 2
+    # eps = 0
+    # g = 0.01
+    # omega_c = 0
+    # kappa = 0.1
+    # Gam_opt = 0.001
+    # driving = 0
+    # #fig, ax = plt.subplots(2, 2, figsize=(15, 8), sharey=False)
+    # prop_cycle = plt.rcParams['axes.prop_cycle']
+    # colors = prop_cycle.by_key()['color']
+    # # kappa_range = 0.1 * np.array([1E-2, 1E-1, 0.25,1])
+    # # for nn, kappa in enumerate(kappa_range):
+    # #     out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
+
+    # #     norm = np.max(out['markov']['cavity'])
+    # #     ax[0][0].plot(2.1-out['markov']['wrange'],
+    # #                   out['markov']['cavity']/norm)
         
-        norm = np.max(out['non_markov']['cavity'])
-        ax[0][1].plot(2.1-out['non_markov']['wrange'],
-                      out['non_markov']['cavity']/norm, color=colors[nn])
+    # #     norm = np.max(out['non_markov']['cavity'])
+    # #     ax[0][1].plot(2.1-out['non_markov']['wrange'],
+    # #                   out['non_markov']['cavity']/norm, color=colors[nn])
 
-        cav_fil = np.abs(cavity_filter(out['markov']['wrange'], 2.1, kappa))**2/np.abs(
-            cavity_filter(2.1, 2.1, kappa))**2
-        ax[0][1].plot(out['markov']['wrange'],cav_fil,'--',color = colors[nn])
-    ax[0][0].legend(kappa_range, title=r'$\kappa$ (eV)')
+    # #     cav_fil = np.abs(cavity_filter(out['markov']['wrange'], 2.1, kappa))**2/np.abs(
+    # #         cavity_filter(2.1, 2.1, kappa))**2
+    # #     ax[0][1].plot(out['markov']['wrange'],cav_fil,'--',color = colors[nn])
+    # # ax[0][0].legend(kappa_range, title=r'$\kappa$ (eV)')
 
-    kappa = 0.01
-    grange = [1E-3, 1E-2, 1E-1]
-    for g in grange:
-        out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
+    # kappa = 0.1
+    # grange = np.linspace(1E-6, 0.5, 500)#[1E-3]#, 1E-2, 1E-1]
+    # st=time.time()
+    # markov_spec_mesh = np.empty((0,SD_sampling))
+    # non_markov_spec_mesh = np.empty((0, SD_sampling))
+    # for g in grange:
+    #     out = emission_spectrum(dim, eps, g, omega_c, driving, kappa, Gam_opt, sd_file, phon_width, SD_sampling, w_max)
         
-        norm = np.max(out['markov']['cavity'])
-        ax[1][0].plot(2.1-out['markov']['wrange'], out['markov']['cavity']/norm)
+    #     markov_spec_mesh = np.append(markov_spec_mesh, np.array(
+    #         [out['markov']['cavity']/np.max(out['markov']['cavity'])]), axis=0)
+    #     non_markov_spec_mesh = np.append(
+    #         non_markov_spec_mesh, np.array([out['non_markov']['cavity']/np.max(out['non_markov']['cavity'])]), axis=0)
+        
+    # en=time.time()
 
-        norm = np.max(out['non_markov']['cavity'])
-        ax[1][1].plot(2.1-out['non_markov']['wrange'],
-                      out['non_markov']['cavity']/norm)
-    cav_fil = np.abs(cavity_filter(out['non_markov']['cavity'],2.1, kappa))**2
-    ax[1][1].plot(out['non_markov']['cavity'],cav_fil/np.max(cav_fil),'--')
-    ax[1][0].legend(grange, title = 'g (eV)')
-    titles = ['(a) Markovian', '(b) Non-Markovian', '(c) Markovian', '(d) Non-Markovian']
-    for index, a in enumerate(ax.flat):
-        a.set_xlim(1.5,2.15)
-        a.set_ylim(-0.1,1.1)
-        a.set_xlabel(r'Energy, $\hbar\omega$ (eV)')
-        a.set_title(titles[index])
+    # pickle.dump(out['non_markov']['wrange'], open('wrange.p','wb'))
+    # pickle.dump(markov_spec_mesh, open('markov_mesh.p','wb'))
+    # pickle.dump(non_markov_spec_mesh, open('non_markov_mesh.p','wb'))
+    # print(st-en)
 
-    ax[0][0].set_xlim(2.085,2.115)
-    ax[1][0].set_xlim(1.9, 2.2)
+    # wrange = pickle.load(open('wrange.p', 'rb'))
+    # markov_spec_mesh = pickle.load(open('markov_mesh.p','rb'))
+    # non_markov_spec_mesh = pickle.load(open('non_markov_mesh.p','rb'))
+    # X, Y = np.meshgrid(wrange, grange)
 
-    ax[0][0].set_yscale('linear')
-    ax[0][1].set_yscale('log')
-    ax[1][1].set_yscale('log')
-    ax[0][1].set_ylim(1E-5,1.5)
-    ax[1][1].set_ylim(1E-5,1.5)
-    plt.tight_layout()
-    plt.savefig('cavity_emission_small_kappa.pdf')
+    # fig, ax = plt.subplots(2, 1, figsize=(15, 8), sharey=False)
+    # ax[0].contourf(X, Y, (markov_spec_mesh.real))
+    # ax[1].contourf(X, Y, np.log10(non_markov_spec_mesh.real), levels=100)
+    # ax[0].set_xlim([-1,1])
+    # ax[1].set_xlim([-1,1])
+    # plt.show()
+    
+    # ax[1][1].plot(out['non_markov']['cavity'],cav_fil/np.max(cav_fil),'--')
+    # ax[1][0].legend(grange, title = 'g (eV)')
+    # titles = ['(a) Markovian', '(b) Non-Markovian', '(c) Markovian', '(d) Non-Markovian']
+    # for index, a in enumerate(ax.flat):
+    #     a.set_xlim(1.5,2.15)
+    #     a.set_ylim(-0.1,1.1)
+    #     a.set_xlabel(r'Energy, $\hbar\omega$ (eV)')
+    #     a.set_title(titles[index])
+
+    # ax[0][0].set_xlim(2.085,2.115)
+    # ax[1][0].set_xlim(1.9, 2.2)
+
+    # ax[0][0].set_yscale('linear')
+    # ax[0][1].set_yscale('log')
+    # ax[1][1].set_yscale('log')
+    # ax[0][1].set_ylim(1E-5,1.5)
+    # ax[1][1].set_ylim(1E-5,1.5)
+    # plt.tight_layout()
+    # plt.savefig('cavity_emission_small_kappa.pdf')
   
