@@ -1,0 +1,14 @@
+env="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+module purge
+unset MYPYTHON
+export PYTHONPATH=''
+module load Python/3.6.6-intel-2018b
+
+source $env/bin/activate
+export GPAW=$env/gpaw
+export ASE=$env/ase
+source $GPAW/doc/platforms/Linux/Niflheim/gpaw-intel.sh
+export ASE_DFTD3_COMMAND=~/source/dftd3/dftd3
+export PYTHONPATH=$env/lib/python3.6/site-packages/:$PYTHONPATH
+export GPAW_SETUP_PATH=$env/paw-datasets/gpaw-setups-0.9.20000
