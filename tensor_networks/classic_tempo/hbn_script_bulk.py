@@ -39,7 +39,7 @@ V=0
 #choose a spontaneous emission rate of 100 ps:
 T1 = 1
 Gamma = 0.00001
-T_range = [10,300]
+T_range = [10]
 
 fig, ax = plt.subplots(1,2,figsize=(15,6))
 for n, T  in enumerate(T_range):
@@ -74,6 +74,9 @@ for n, T  in enumerate(T_range):
     tempo.free_evolution()
     tempo.construct_bath_data(J_data, Temp=Temp)
     tempo.prep()
+
+    print(tempo.I_dk(0))
+    print(tempo.I_dk(1))
     tempo.prop(100)
     data = np.array(tempo.state_list)
 
