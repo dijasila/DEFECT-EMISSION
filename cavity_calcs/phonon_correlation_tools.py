@@ -23,7 +23,7 @@ def gen_spectral_dens(file, phon_width, SD_sampling, w_max,  plot=None):
 
 
     # First we need to load in the relevant data
-    df = pd.read_excel(file)
+    df = pd.read_excel(file, engine='openpyxl')
 
     df = df[df["Freq"] > 0] # Removing negative phonon frequencies
     frequencies = 2*np.pi*df["Freq"].values # Turning into angular frequencies
